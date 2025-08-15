@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pyrogram.errors import FloodWait, BadRequest
+from pyrogram.enums import ParseMode
 import aiohttp
 import aiofiles
 
@@ -93,7 +94,7 @@ Type /help for more information.
 ✅ Progress tracking
 ✅ Error recovery
         """
-        await message.reply_text(welcome_text, parse_mode='html')
+        await message.reply_text(welcome_text, parse_mode=ParseMode.HTML)
 
     async def help_command(self, message: Message):
         """Send help information with HTML formatting"""
@@ -133,7 +134,7 @@ Type /help for more information.
 
 <b>Developer:</b> @medusaXD
         """
-        await message.reply_text(help_text, parse_mode='html')
+        await message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
     def extract_instagram_urls(self, text: str):
         """Extract Instagram URLs from message text"""
@@ -279,7 +280,7 @@ Type /help for more information.
                                     try:
                                         await progress_message.edit_text(
                                             f"⏬ <b>Downloading...</b> {progress:.1f}% ({downloaded/1024/1024:.1f}MB/{file_size/1024/1024:.1f}MB)",
-                                            parse_mode='html'
+                                            parse_mode=ParseMode.HTML
                                         )
                                         last_update = progress
                                     except:
@@ -302,7 +303,7 @@ Type /help for more information.
                     "❌ <b>No Instagram URL found!</b>\n\n"
                     "Please send a valid Instagram URL.\n"
                     "<b>Example:</b> <code>https://instagram.com/p/xxxxx</code>",
-                    parse_mode='html'
+                    parse_mode=ParseMode.HTML
                 )
                 return
 
@@ -311,7 +312,7 @@ Type /help for more information.
             content_type = self.detect_content_type(url)
 
             # Send processing message with HTML formatting
-            processing_msg = await message.reply_text("🔄 <b>Processing your request...</b>", parse_mode='html')
+            processing_msg = await message.reply_text("🔄 <b>Processing your request...</b>", parse_mode=ParseMode.HTML)
 
             if content_type in ['reel', 'mixed']:
                 # Try video first
@@ -343,7 +344,7 @@ Type /help for more information.
                 "• Invalid URL\n"
                 "• Temporary server issue\n\n"
                 "<i>Please try again later.</i>",
-                parse_mode='html'
+                parse_mode=ParseMode.HTML
             )
 
         except Exception as e:
@@ -351,7 +352,7 @@ Type /help for more information.
             await message.reply_text(
                 "❌ <b>An error occurred while processing your request.</b>\n\n"
                 "<i>Please try again later.</i>",
-                parse_mode='html'
+                parse_mode=ParseMode.HTML
             )
 
     async def process_video(self, data: dict, original_message: Message, processing_msg: Message):
@@ -359,23 +360,23 @@ Type /help for more information.
         try:
             video_url = data.get('video', '')
             if not video_url:
-                await processing_msg.edit_text("❌ <b>No video URL found</b>", parse_mode='html')
+                await processing_msg.edit_text("❌ <b>No video URL found</b>", parse_mode=ParseMode.HTML)
                 return
 
             # Generate temporary filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             temp_filename = f"./downloads/reel_{timestamp}.mp4"
 
-            await processing_msg.edit_text("⏬ <b>Downloading video...</b>", parse_mode='html')
+            await processing_msg.edit_text("⏬ <b>Downloading video...</b>", parse_mode=ParseMode.HTML)
 
             # Download video with progress tracking
             success = await self.download_file_async(video_url, temp_filename, processing_msg)
 
             if not success:
-                await processing_msg.edit_text("❌ <b>Failed to download video</b>", parse_mode='html')
+                await processing_msg.edit_text("❌ <b>Failed to download video</b>", parse_mode=ParseMode.HTML)
                 return
 
-            await processing_msg.edit_text("📤 <b>Uploading video...</b>", parse_mode='html')
+            await processing_msg.edit_text("📤 <b>Uploading video...</b>", parse_mode=ParseMode.HTML)
 
             # Check file size
             file_size = os.path.getsize(temp_filename)
@@ -384,7 +385,7 @@ Type /help for more information.
                     "❌ <b>File too large!</b>\n\n"
                     f"<b>File size:</b> {file_size/1024/1024:.1f}MB\n"
                     "<b>Maximum allowed:</b> 2GB",
-                    parse_mode='html'
+                    parse_mode=ParseMode.HTML
                 )
                 os.remove(temp_filename)
                 return
@@ -392,8 +393,8 @@ Type /help for more information.
             # Send video using Pyrogram's enhanced file handling
             await original_message.reply_video(
                 temp_filename,
-                caption="🎥 <b>Downloaded by Instagram Downloader Bot</b>\n\n<b>Developer:</b> @authorizationFingerprint",
-                parse_mode='html',
+                caption="🎥 <b>Downloaded by Instagram Downloader Bot</b>\n\n<b>Developer:</b> @medusaXD",
+                parse_mode=ParseMode.HTML,
                 progress=self.progress_callback,
                 progress_args=(processing_msg, "upload")
             )
@@ -409,18 +410,18 @@ Type /help for more information.
             await self.process_video(data, original_message, processing_msg)
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
-            await processing_msg.edit_text("❌ <b>Failed to process video</b>", parse_mode='html')
+            await processing_msg.edit_text("❌ <b>Failed to process video</b>", parse_mode=ParseMode.HTML)
 
     async def process_photos(self, data: dict, original_message: Message, processing_msg: Message):
         """Process and send photo content with HTML formatting"""
         try:
             images = data.get('images', [])
             if not images:
-                await processing_msg.edit_text("❌ <b>No images found</b>", parse_mode='html')
+                await processing_msg.edit_text("❌ <b>No images found</b>", parse_mode=ParseMode.HTML)
                 return
 
             total_images = len(images)
-            await processing_msg.edit_text(f"📸 <b>Downloading {total_images} image(s)...</b>", parse_mode='html')
+            await processing_msg.edit_text(f"📸 <b>Downloading {total_images} image(s)...</b>", parse_mode=ParseMode.HTML)
 
             for idx, img_data in enumerate(images, 1):
                 img_url = img_data.get('image', '')
@@ -432,7 +433,7 @@ Type /help for more information.
 
                 await processing_msg.edit_text(
                     f"⏬ <b>Downloading image {idx}/{total_images}...</b>",
-                    parse_mode='html'
+                    parse_mode=ParseMode.HTML
                 )
 
                 success = await self.download_file_async(img_url, temp_filename)
@@ -440,8 +441,8 @@ Type /help for more information.
                 if success:
                     await original_message.reply_photo(
                         temp_filename,
-                        caption=f"📸 <b>Image {idx}/{total_images}</b>\n\n<b>Downloaded by Instagram Downloader Bot</b>\n<b>Developer:</b> @authorizationFingerprint",
-                        parse_mode='html'
+                        caption=f"📸 <b>Image {idx}/{total_images}</b>\n\n<b>Downloaded by Instagram Downloader Bot</b>\n<b>Developer:</b> @medusaXD",
+                        parse_mode=ParseMode.HTML
                     )
 
                     # Clean up
@@ -455,7 +456,7 @@ Type /help for more information.
 
         except Exception as e:
             logger.error(f"Error processing photos: {str(e)}")
-            await processing_msg.edit_text("❌ <b>Failed to process images</b>", parse_mode='html')
+            await processing_msg.edit_text("❌ <b>Failed to process images</b>", parse_mode=ParseMode.HTML)
 
     async def progress_callback(self, current, total, processing_msg, operation):
         """Progress callback for file operations with HTML formatting"""
@@ -464,7 +465,7 @@ Type /help for more information.
             await processing_msg.edit_text(
                 f"{'📤 <b>Uploading</b>' if operation == 'upload' else '⏬ <b>Downloading</b>'}... {percentage:.1f}%\n"
                 f"({current/1024/1024:.1f}MB / {total/1024/1024:.1f}MB)",
-                parse_mode='html'
+                parse_mode=ParseMode.HTML
             )
         except:
             pass
