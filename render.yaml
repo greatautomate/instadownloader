@@ -5,7 +5,6 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: python main.py
     envVars:
       - key: API_ID
         sync: false
@@ -15,4 +14,4 @@ services:
         sync: false
     autoDeploy: true
     plan: starter
-    region: oregon
+    region: virginia
