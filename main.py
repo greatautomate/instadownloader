@@ -32,9 +32,6 @@ class InstagramDownloaderBot:
         self.api_hash = os.getenv('API_HASH')
         self.bot_token = os.getenv('BOT_TOKEN')
 
-        # TeraBox API configuration - Working endpoint
-        self.terabox_api_url = "http://smex.unaux.com/fastbox.php"
-
         # Initialize Pyrogram client
         self.app = Client(
             "instagram_bot",
@@ -68,25 +65,24 @@ class InstagramDownloaderBot:
     async def start_command(self, message: Message):
         """Send welcome message with HTML formatting"""
         welcome_text = """
-🎬📸 <b>Multi-Platform Downloader Bot</b>
+🎬📸 <b>Instagram Reels &amp; Photos Downloader Bot</b>
 
-Welcome! Send me any supported URL and I'll download it for you.
+Welcome! Send me any Instagram URL and I'll download it for you.
 
 <b>What I can download:</b>
-🎥 <b>Instagram Reels</b> - Video content (up to 2GB)
-📸 <b>Instagram Photos</b> - Single or multiple images
-📱 <b>Instagram Posts</b> - Any Instagram post content
-📦 <b>TeraBox Files</b> - Videos and files from TeraBox
+🎥 <b>Reels</b> - Video content (up to 2GB)
+📸 <b>Photos</b> - Single or multiple images
+📱 <b>Posts</b> - Any Instagram post content
 
 <b>How to use:</b>
-1. Copy a supported link
+1. Copy an Instagram link
 2. Send it to me  
 3. Wait for processing ⏳
 4. Get your content! 📥
 
-<b>Supported platforms:</b>
-• Instagram (Reels/Photos)
-• TeraBox (Files/Videos)
+<b>Supported formats:</b>
+• instagram.com/reel/xxxxx (Videos)
+• instagram.com/p/xxxxx (Photos/Videos)
 
 Type /help for more information.
 
@@ -97,43 +93,35 @@ Type /help for more information.
 ✅ Fast async downloads
 ✅ Progress tracking
 ✅ Error recovery
-✅ Multi-platform support
         """
         await message.reply_text(welcome_text, parse_mode=ParseMode.HTML)
 
     async def help_command(self, message: Message):
         """Send help information with HTML formatting"""
         help_text = """
-📖 <b>Help - Multi-Platform Downloader Bot</b>
+📖 <b>Help - Instagram Downloader Bot</b>
 
 <b>Commands:</b>
 • <code>/start</code> - Start the bot
 • <code>/help</code> - Show this help message
 
 <b>Supported Content:</b>
-🎥 <b>Instagram Reels</b> - Downloaded as MP4 (up to 2GB)
-📸 <b>Instagram Photos</b> - Downloaded as JPG (HD Quality)
-📦 <b>TeraBox Files</b> - Any file type supported by TeraBox
+🎥 <b>Video Reels</b> - Downloaded as MP4 (up to 2GB)
+📸 <b>Single Photos</b> - Downloaded as JPG (HD Quality)
+🖼️ <b>Multiple Photos</b> - Sent individually
 
 <b>How to download:</b>
-1. Open Instagram or TeraBox app/website
-2. Copy the link of any post/file
+1. Open Instagram app or website
+2. Copy the link of any post or reel
 3. Send the link to this bot
 4. Wait for processing (10-60 seconds)
 5. Download will be sent automatically
 
 <b>Supported URLs:</b>
-
-<b>Instagram:</b>
 • <code>https://instagram.com/reel/xxxxx</code>
 • <code>https://instagram.com/p/xxxxx</code>
 • <code>https://www.instagram.com/reel/xxxxx</code>
 • <code>https://www.instagram.com/p/xxxxx</code>
-
-<b>TeraBox:</b>
-• <code>https://terabox.com/s/xxxxx</code>
-• <code>https://www.terabox.com/sharing/link?surl=xxxxx</code>
-• <code>https://1024tera.com/s/xxxxx</code>
 
 <b>Features:</b>
 🚀 <b>Fast Downloads</b> - Async processing
@@ -141,150 +129,18 @@ Type /help for more information.
 🔄 <b>Auto Retry</b> - Handles temporary failures
 💾 <b>Large Files</b> - Supports files up to 2GB
 🛡️ <b>Error Handling</b> - Comprehensive error recovery
-🌐 <b>Multi-Platform</b> - Instagram + TeraBox support
 
-<i>Note: Only public content can be downloaded.</i>
+<i>Note: Only public posts can be downloaded.</i>
 
 <b>Developer:</b> @medusaXD
         """
         await message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
-    def extract_all_urls(self, text: str):
-        """Extract all supported URLs from message text with improved patterns"""
-        # Instagram URL patterns
-        instagram_urls = re.findall(r'https?://(?:www\.)?instagram\.com/(?:reel|p)/[a-zA-Z0-9_-]+/?', text)
-
-        # TeraBox URL patterns - Updated to handle multiple formats
-        terabox_patterns = [
-            r'https?://(?:www\.)?terabox\.com/s/[a-zA-Z0-9_-]+/?',  # Old format
-            r'https?://(?:www\.)?terabox\.com/sharing/link\?surl=[a-zA-Z0-9_-]+',  # New format
-            r'https?://(?:www\.)?1024tera\.com/s/[a-zA-Z0-9_-]+/?'  # Alternative domain
-        ]
-
-        terabox_urls = []
-        for pattern in terabox_patterns:
-            matches = re.findall(pattern, text)
-            terabox_urls.extend(matches)
-
-        return {
-            'instagram': instagram_urls,
-            'terabox': terabox_urls
-        }
-
-    async def get_terabox_data_method1(self, url: str):
-        """Method 1: Get TeraBox file data using manual JSON parsing (Working API)"""
-        try:
-            params = {
-                'url': url  # Changed from 'link' to 'url', removed 'key' parameter
-            }
-
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self.terabox_api_url, params=params) as response:
-                    if response.status != 200:
-                        logger.error(f"TeraBox API returned status {response.status}")
-                        return None
-
-                    # Get text first, then parse JSON manually to bypass content-type check
-                    response_text = await response.text()
-                    logger.info(f"TeraBox API raw response: {response_text}")
-
-                    try:
-                        # Manual JSON parsing to handle incorrect content-type headers
-                        data = json.loads(response_text)
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Method 1 - Failed to parse JSON response: {e}")
-                        logger.error(f"Response text: {response_text}")
-                        return None
-
-                    # Check if response is successful and has data
-                    if data.get('status') == 'success' and 'data' in data and len(data['data']) > 0:
-                        file_info = data['data'][0]  # Get first file from the array
-
-                        # Extract file information from the new API structure
-                        return {
-                            "status": "success",
-                            "type": "terabox",
-                            "file_name": file_info.get('name', 'terabox_file'),
-                            "direct_link": file_info.get('fast_stream_url', ''),
-                            "thumb": file_info.get('thumbnail', ''),
-                            "size": file_info.get('size_formatted', 'Unknown'),
-                            "sizebytes": 0,  # Size in bytes not provided by this API
-                            "dev": "@medusaXD"
-                        }
-                    else:
-                        logger.error(f"Method 1 - TeraBox API unsuccessful response: {data}")
-                        return None
-
-        except Exception as e:
-            logger.error(f"Method 1 - Error getting TeraBox data: {str(e)}")
-            return None
-
-    async def get_terabox_data_method2(self, url: str):
-        """Method 2: Get TeraBox file data using content_type=None (Working API)"""
-        try:
-            params = {
-                'url': url  # Changed from 'link' to 'url', removed 'key' parameter
-            }
-
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self.terabox_api_url, params=params) as response:
-                    if response.status != 200:
-                        logger.error(f"TeraBox API returned status {response.status}")
-                        return None
-
-                    try:
-                        # Use content_type=None to bypass mimetype checking
-                        data = await response.json(content_type=None)
-                        logger.info(f"TeraBox API parsed data: {data}")
-                    except Exception as e:
-                        logger.error(f"Method 2 - Failed to parse JSON with content_type=None: {e}")
-                        return None
-
-                    # Check if response is successful and has data
-                    if data.get('status') == 'success' and 'data' in data and len(data['data']) > 0:
-                        file_info = data['data'][0]  # Get first file from the array
-
-                        # Extract file information from the new API structure
-                        return {
-                            "status": "success",
-                            "type": "terabox",
-                            "file_name": file_info.get('name', 'terabox_file'),
-                            "direct_link": file_info.get('fast_stream_url', ''),
-                            "thumb": file_info.get('thumbnail', ''),
-                            "size": file_info.get('size_formatted', 'Unknown'),
-                            "sizebytes": 0,  # Size in bytes not provided by this API
-                            "dev": "@medusaXD"
-                        }
-                    else:
-                        logger.error(f"Method 2 - TeraBox API unsuccessful response: {data}")
-                        return None
-
-        except Exception as e:
-            logger.error(f"Method 2 - Error getting TeraBox data: {str(e)}")
-            return None
-
-    async def get_terabox_data(self, url: str):
-        """Combined TeraBox data fetcher with fallback methods (Working API)"""
-        logger.info(f"Attempting to fetch TeraBox data for URL: {url}")
-
-        # Try Method 1 first (manual JSON parsing)
-        data = await self.get_terabox_data_method1(url)
-        if data:
-            logger.info("Method 1 successful!")
-            return data
-
-        logger.info("Method 1 failed, trying Method 2...")
-
-        # Try Method 2 as fallback (content_type=None)
-        data = await self.get_terabox_data_method2(url)
-        if data:
-            logger.info("Method 2 successful!")
-            return data
-
-        logger.error("Both methods failed to fetch TeraBox data")
-        return None
+    def extract_instagram_urls(self, text: str):
+        """Extract Instagram URLs from message text"""
+        instagram_pattern = r'https?://(?:www\.)?instagram\.com/(?:reel|p)/([a-zA-Z0-9_-]+)/?'
+        full_urls = re.findall(r'https?://(?:www\.)?instagram\.com/(?:reel|p)/[a-zA-Z0-9_-]+/?', text)
+        return full_urls
 
     async def get_reel_data(self, url: str):
         """Get reel data for video content with async requests"""
@@ -389,16 +245,14 @@ Type /help for more information.
             logger.error(f"Error getting photo data: {str(e)}")
             return None
 
-    def detect_url_type(self, url: str):
-        """Detect the type of URL"""
-        if 'instagram.com' in url:
-            if '/reel/' in url:
-                return 'instagram_reel'
-            elif '/p/' in url:
-                return 'instagram_mixed'
-        elif 'terabox.com' in url or '1024tera.com' in url:
-            return 'terabox'
-        return 'unknown'
+    def detect_content_type(self, url: str):
+        """Detect if URL is for reel/video or photo content"""
+        if '/reel/' in url:
+            return 'reel'
+        elif '/p/' in url:
+            return 'mixed'
+        else:
+            return 'unknown'
 
     async def download_file_async(self, url: str, filename: str, progress_message: Message = None):
         """Download file asynchronously with progress tracking"""
@@ -439,32 +293,59 @@ Type /help for more information.
             return False
 
     async def handle_message(self, message: Message):
-        """Handle incoming messages with multi-platform support"""
+        """Handle incoming messages with HTML formatting"""
         try:
             message_text = message.text
-            urls = self.extract_all_urls(message_text)
+            instagram_urls = self.extract_instagram_urls(message_text)
 
-            # Check for any supported URLs
-            all_urls = urls['instagram'] + urls['terabox']
-
-            if not all_urls:
+            if not instagram_urls:
                 await message.reply_text(
-                    "❌ <b>No supported URL found!</b>\n\n"
-                    "Please send a valid URL from:\n"
-                    "• <b>Instagram:</b> <code>https://instagram.com/p/xxxxx</code>\n"
-                    "• <b>TeraBox:</b> <code>https://terabox.com/sharing/link?surl=xxxxx</code>",
+                    "❌ <b>No Instagram URL found!</b>\n\n"
+                    "Please send a valid Instagram URL.\n"
+                    "<b>Example:</b> <code>https://instagram.com/p/xxxxx</code>",
                     parse_mode=ParseMode.HTML
                 )
                 return
 
             # Process first URL found
-            if urls['instagram']:
-                url = urls['instagram'][0]
-                url_type = self.detect_url_type(url)
-                await self.process_instagram_url(url, url_type, message)
-            elif urls['terabox']:
-                url = urls['terabox'][0]
-                await self.process_terabox_url(url, message)
+            url = instagram_urls[0]
+            content_type = self.detect_content_type(url)
+
+            # Send processing message with HTML formatting
+            processing_msg = await message.reply_text("🔄 <b>Processing your request...</b>", parse_mode=ParseMode.HTML)
+
+            if content_type in ['reel', 'mixed']:
+                # Try video first
+                data = await self.get_reel_data(url)
+
+                if data and data.get('status') == 'success':
+                    await self.process_video(data, message, processing_msg, url)
+                    return
+
+                # If video fails and it's mixed, try photo
+                if content_type == 'mixed':
+                    data = await self.get_photo_data(url)
+                    if data and data.get('status') == 'success':
+                        await self.process_photos(data, message, processing_msg)
+                        return
+
+            elif content_type == 'mixed':
+                # Try photo for /p/ URLs
+                data = await self.get_photo_data(url)
+                if data and data.get('status') == 'success':
+                    await self.process_photos(data, message, processing_msg)
+                    return
+
+            # If all methods fail
+            await processing_msg.edit_text(
+                "❌ <b>Failed to fetch content</b>\n\n"
+                "<b>Possible reasons:</b>\n"
+                "• Post is private\n"
+                "• Invalid URL\n"
+                "• Temporary server issue\n\n"
+                "<i>Please try again later.</i>",
+                parse_mode=ParseMode.HTML
+            )
 
         except Exception as e:
             logger.error(f"Error handling message: {str(e)}")
@@ -473,128 +354,6 @@ Type /help for more information.
                 "<i>Please try again later.</i>",
                 parse_mode=ParseMode.HTML
             )
-
-    async def process_instagram_url(self, url: str, url_type: str, message: Message):
-        """Process Instagram URLs"""
-        processing_msg = await message.reply_text("🔄 <b>Processing Instagram URL...</b>", parse_mode=ParseMode.HTML)
-
-        if url_type in ['instagram_reel', 'instagram_mixed']:
-            # Try video first
-            data = await self.get_reel_data(url)
-
-            if data and data.get('status') == 'success':
-                await self.process_video(data, message, processing_msg, url)
-                return
-
-            # If video fails and it's mixed, try photo
-            if url_type == 'instagram_mixed':
-                data = await self.get_photo_data(url)
-                if data and data.get('status') == 'success':
-                    await self.process_photos(data, message, processing_msg)
-                    return
-
-        # If all methods fail
-        await processing_msg.edit_text(
-            "❌ <b>Failed to fetch Instagram content</b>\n\n"
-            "<b>Possible reasons:</b>\n"
-            "• Post is private\n"
-            "• Invalid URL\n"
-            "• Temporary server issue\n\n"
-            "<i>Please try again later.</i>",
-            parse_mode=ParseMode.HTML
-        )
-
-    async def process_terabox_url(self, url: str, message: Message):
-        """Process TeraBox URLs"""
-        processing_msg = await message.reply_text("🔄 <b>Processing TeraBox URL...</b>", parse_mode=ParseMode.HTML)
-
-        data = await self.get_terabox_data(url)
-
-        if data and data.get('status') == 'success':
-            await self.process_terabox_file(data, message, processing_msg, url)
-        else:
-            await processing_msg.edit_text(
-                "❌ <b>Failed to fetch TeraBox content</b>\n\n"
-                "<b>Possible reasons:</b>\n"
-                "• File is private or expired\n"
-                "• Invalid URL\n"
-                "• API temporary issue\n\n"
-                "<i>Please try again later.</i>",
-                parse_mode=ParseMode.HTML
-            )
-
-    async def process_terabox_file(self, data: dict, original_message: Message, processing_msg: Message, original_url: str):
-        """Process and send TeraBox files"""
-        try:
-            direct_link = data.get('direct_link', '')
-            file_name = data.get('file_name', 'terabox_file')
-            size_text = data.get('size', 'Unknown')
-
-            if not direct_link:
-                await processing_msg.edit_text("❌ <b>No download link found</b>", parse_mode=ParseMode.HTML)
-                return
-
-            # Generate temporary filename with proper extension
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_extension = os.path.splitext(file_name)[1] if '.' in file_name else '.mp4'
-            temp_filename = f"./downloads/terabox_{timestamp}{file_extension}"
-
-            await processing_msg.edit_text(f"⏬ <b>Downloading TeraBox file...</b>\n📁 <b>File:</b> {file_name}\n📊 <b>Size:</b> {size_text}", parse_mode=ParseMode.HTML)
-
-            # Download file with progress tracking
-            success = await self.download_file_async(direct_link, temp_filename, processing_msg)
-
-            if not success:
-                await processing_msg.edit_text("❌ <b>Failed to download TeraBox file</b>", parse_mode=ParseMode.HTML)
-                return
-
-            await processing_msg.edit_text("📤 <b>Uploading file...</b>", parse_mode=ParseMode.HTML)
-
-            # Check file size
-            actual_file_size = os.path.getsize(temp_filename)
-            if actual_file_size > 2 * 1024 * 1024 * 1024:  # 2GB limit
-                await processing_msg.edit_text(
-                    "❌ <b>File too large!</b>\n\n"
-                    f"<b>File size:</b> {actual_file_size/1024/1024:.1f}MB\n"
-                    "<b>Maximum allowed:</b> 2GB",
-                    parse_mode=ParseMode.HTML
-                )
-                os.remove(temp_filename)
-                return
-
-            # Determine if it's a video or document
-            video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm']
-            is_video = any(file_extension.lower().endswith(ext) for ext in video_extensions)
-
-            if is_video:
-                # Send as video
-                await original_message.reply_video(
-                    temp_filename,
-                    caption=f"🔗 Original URL: {original_url}",
-                    progress=self.progress_callback,
-                    progress_args=(processing_msg, "upload")
-                )
-            else:
-                # Send as document
-                await original_message.reply_document(
-                    temp_filename,
-                    caption=f"🔗 Original URL: {original_url}",
-                    progress=self.progress_callback,
-                    progress_args=(processing_msg, "upload")
-                )
-
-            await processing_msg.delete()
-
-            # Clean up
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
-
-        except FloodWait as e:
-            await asyncio.sleep(e.value)
-            await self.process_terabox_file(data, original_message, processing_msg, original_url)
-        except Exception as e:
-            logger.error(f"Error processing TeraBox file: {str(e)}")
-            await processing_msg.edit_text("❌ <b>Failed to process TeraBox file</b>", parse_mode=ParseMode.HTML)
 
     async def process_video(self, data: dict, original_message: Message, processing_msg: Message, original_url: str):
         """Process and send video content with simplified caption"""
@@ -681,7 +440,7 @@ Type /help for more information.
                 if success:
                     await original_message.reply_photo(
                         temp_filename,
-                        caption=f"📸 <b>Image {idx}/{total_images}</b>\n\n<b>Downloaded by Multi-Platform Bot</b>\n<b>Developer:</b> @medusaXD",
+                        caption=f"📸 <b>Image {idx}/{total_images}</b>\n\n<b>Downloaded by Instagram Downloader Bot</b>\n<b>Developer:</b> @medusaXD",
                         parse_mode=ParseMode.HTML
                     )
 
@@ -712,7 +471,7 @@ Type /help for more information.
 
     def run(self):
         """Start the bot"""
-        logger.info("🚀 Starting Multi-Platform Downloader Bot...")
+        logger.info("🚀 Starting Instagram Downloader Bot...")
         self.app.run()
 
 # Bot instance
