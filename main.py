@@ -133,7 +133,7 @@ Type /help for more information.
 
 <b>TeraBox:</b>
 • <code>https://terabox.com/s/xxxxx</code>
-• <code>https://www.terabox.com/s/xxxxx</code>
+• <code>https://www.terabox.com/sharing/link?surl=xxxxx</code>
 • <code>https://1024tera.com/s/xxxxx</code>
 
 <b>Features:</b>
@@ -150,26 +150,22 @@ Type /help for more information.
         """
         await message.reply_text(help_text, parse_mode=ParseMode.HTML)
 
-    def extract_instagram_urls(self, text: str):
-        """Extract Instagram URLs from message text"""
-        instagram_pattern = r'https?://(?:www\.)?instagram\.com/(?:reel|p)/[a-zA-Z0-9_-]+/?'
-        full_urls = re.findall(instagram_pattern, text)
-        return full_urls
-
-    def extract_terabox_urls(self, text: str):
-        """Extract TeraBox URLs from message text"""
-        terabox_pattern = r'https?://(?:www\.)?(terabox\.com|1024tera\.com)/s/[a-zA-Z0-9_-]+/?'
-        full_urls = re.findall(terabox_pattern, text)
-        # Return full URLs, not just the matched groups
-        return [f"https://{match}" if not text[text.find(match)-8:text.find(match)].startswith('http') 
-                else text[text.find(f"https://{match}"):text.find(f"https://{match}")+len(f"https://{match}")+20].split()[0]
-                for match in full_urls]
-
     def extract_all_urls(self, text: str):
-        """Extract all supported URLs from message text"""
-        # More comprehensive URL extraction
+        """Extract all supported URLs from message text with improved patterns"""
+        # Instagram URL patterns
         instagram_urls = re.findall(r'https?://(?:www\.)?instagram\.com/(?:reel|p)/[a-zA-Z0-9_-]+/?', text)
-        terabox_urls = re.findall(r'https?://(?:www\.)?(terabox\.com|1024tera\.com)/s/[a-zA-Z0-9_-]+/?', text)
+
+        # TeraBox URL patterns - Updated to handle multiple formats
+        terabox_patterns = [
+            r'https?://(?:www\.)?terabox\.com/s/[a-zA-Z0-9_-]+/?',  # Old format
+            r'https?://(?:www\.)?terabox\.com/sharing/link\?surl=[a-zA-Z0-9_-]+',  # New format
+            r'https?://(?:www\.)?1024tera\.com/s/[a-zA-Z0-9_-]+/?'  # Alternative domain
+        ]
+
+        terabox_urls = []
+        for pattern in terabox_patterns:
+            matches = re.findall(pattern, text)
+            terabox_urls.extend(matches)
 
         return {
             'instagram': instagram_urls,
@@ -379,7 +375,7 @@ Type /help for more information.
                     "❌ <b>No supported URL found!</b>\n\n"
                     "Please send a valid URL from:\n"
                     "• <b>Instagram:</b> <code>https://instagram.com/p/xxxxx</code>\n"
-                    "• <b>TeraBox:</b> <code>https://terabox.com/s/xxxxx</code>",
+                    "• <b>TeraBox:</b> <code>https://terabox.com/sharing/link?surl=xxxxx</code>",
                     parse_mode=ParseMode.HTML
                 )
                 return
