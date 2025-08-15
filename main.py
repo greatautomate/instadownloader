@@ -32,9 +32,8 @@ class InstagramDownloaderBot:
         self.api_hash = os.getenv('API_HASH')
         self.bot_token = os.getenv('BOT_TOKEN')
 
-        # TeraBox API configuration
-        self.terabox_api_url = "http://smex.unaux.com/tera.php"
-        self.terabox_api_key = "tera-m7Tz3nqA9u4ybKaG5x0p"
+        # TeraBox API configuration - Updated to working endpoint
+        self.terabox_api_url = "http://smex.unaux.com/fastbox.php"
 
         # Initialize Pyrogram client
         self.app = Client(
@@ -173,11 +172,10 @@ Type /help for more information.
         }
 
     async def get_terabox_data_method1(self, url: str):
-        """Method 1: Get TeraBox file data using manual JSON parsing"""
+        """Method 1: Get TeraBox file data using manual JSON parsing (Working API)"""
         try:
             params = {
-                'link': url,
-                'key': self.terabox_api_key
+                'url': url  # Changed from 'link' to 'url', removed 'key' parameter
             }
 
             timeout = aiohttp.ClientTimeout(total=30)
@@ -199,20 +197,23 @@ Type /help for more information.
                         logger.error(f"Response text: {response_text}")
                         return None
 
-                    # Check if we have required fields
-                    if 'direct_link' in data and data['direct_link']:
+                    # Check if response is successful and has data
+                    if data.get('status') == 'success' and 'data' in data and len(data['data']) > 0:
+                        file_info = data['data'][0]  # Get first file from the array
+
+                        # Extract file information from the new API structure
                         return {
                             "status": "success",
                             "type": "terabox",
-                            "file_name": data.get('file_name', 'terabox_file'),
-                            "direct_link": data['direct_link'],
-                            "thumb": data.get('thumb', ''),
-                            "size": data.get('size', 'Unknown'),
-                            "sizebytes": data.get('sizebytes', 0),
+                            "file_name": file_info.get('name', 'terabox_file'),
+                            "direct_link": file_info.get('fast_stream_url', ''),
+                            "thumb": file_info.get('thumbnail', ''),
+                            "size": file_info.get('size_formatted', 'Unknown'),
+                            "sizebytes": 0,  # Size in bytes not provided by this API
                             "dev": "@medusaXD"
                         }
                     else:
-                        logger.error(f"Method 1 - TeraBox API response missing direct_link: {data}")
+                        logger.error(f"Method 1 - TeraBox API unsuccessful response: {data}")
                         return None
 
         except Exception as e:
@@ -220,11 +221,10 @@ Type /help for more information.
             return None
 
     async def get_terabox_data_method2(self, url: str):
-        """Method 2: Get TeraBox file data using content_type=None"""
+        """Method 2: Get TeraBox file data using content_type=None (Working API)"""
         try:
             params = {
-                'link': url,
-                'key': self.terabox_api_key
+                'url': url  # Changed from 'link' to 'url', removed 'key' parameter
             }
 
             timeout = aiohttp.ClientTimeout(total=30)
@@ -242,20 +242,23 @@ Type /help for more information.
                         logger.error(f"Method 2 - Failed to parse JSON with content_type=None: {e}")
                         return None
 
-                    # Check if we have required fields
-                    if 'direct_link' in data and data['direct_link']:
+                    # Check if response is successful and has data
+                    if data.get('status') == 'success' and 'data' in data and len(data['data']) > 0:
+                        file_info = data['data'][0]  # Get first file from the array
+
+                        # Extract file information from the new API structure
                         return {
                             "status": "success",
                             "type": "terabox",
-                            "file_name": data.get('file_name', 'terabox_file'),
-                            "direct_link": data['direct_link'],
-                            "thumb": data.get('thumb', ''),
-                            "size": data.get('size', 'Unknown'),
-                            "sizebytes": data.get('sizebytes', 0),
+                            "file_name": file_info.get('name', 'terabox_file'),
+                            "direct_link": file_info.get('fast_stream_url', ''),
+                            "thumb": file_info.get('thumbnail', ''),
+                            "size": file_info.get('size_formatted', 'Unknown'),
+                            "sizebytes": 0,  # Size in bytes not provided by this API
                             "dev": "@medusaXD"
                         }
                     else:
-                        logger.error(f"Method 2 - TeraBox API response missing direct_link: {data}")
+                        logger.error(f"Method 2 - TeraBox API unsuccessful response: {data}")
                         return None
 
         except Exception as e:
@@ -263,7 +266,7 @@ Type /help for more information.
             return None
 
     async def get_terabox_data(self, url: str):
-        """Combined TeraBox data fetcher with fallback methods"""
+        """Combined TeraBox data fetcher with fallback methods (Working API)"""
         logger.info(f"Attempting to fetch TeraBox data for URL: {url}")
 
         # Try Method 1 first (manual JSON parsing)
@@ -525,7 +528,6 @@ Type /help for more information.
         try:
             direct_link = data.get('direct_link', '')
             file_name = data.get('file_name', 'terabox_file')
-            file_size = data.get('sizebytes', 0)
             size_text = data.get('size', 'Unknown')
 
             if not direct_link:
