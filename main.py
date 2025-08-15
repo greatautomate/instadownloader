@@ -32,7 +32,7 @@ class InstagramDownloaderBot:
         self.api_hash = os.getenv('API_HASH')
         self.bot_token = os.getenv('BOT_TOKEN')
 
-        # TeraBox API configuration - Updated to working endpoint
+        # TeraBox API configuration - Working endpoint
         self.terabox_api_url = "http://smex.unaux.com/fastbox.php"
 
         # Initialize Pyrogram client
