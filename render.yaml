@@ -1,0 +1,18 @@
+services:
+  - type: worker
+    name: instagram-downloader-bot
+    env: docker
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH  
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+    autoDeploy: true
+    plan: starter
+    region: oregon
