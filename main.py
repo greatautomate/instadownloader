@@ -172,8 +172,8 @@ Type /help for more information.
             'terabox': terabox_urls
         }
 
-    async def get_terabox_data(self, url: str):
-        """Get TeraBox file data using the API"""
+    async def get_terabox_data_method1(self, url: str):
+        """Method 1: Get TeraBox file data using manual JSON parsing"""
         try:
             params = {
                 'link': url,
@@ -187,7 +187,17 @@ Type /help for more information.
                         logger.error(f"TeraBox API returned status {response.status}")
                         return None
 
-                    data = await response.json()
+                    # Get text first, then parse JSON manually to bypass content-type check
+                    response_text = await response.text()
+                    logger.info(f"TeraBox API raw response: {response_text}")
+
+                    try:
+                        # Manual JSON parsing to handle incorrect content-type headers
+                        data = json.loads(response_text)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Method 1 - Failed to parse JSON response: {e}")
+                        logger.error(f"Response text: {response_text}")
+                        return None
 
                     # Check if we have required fields
                     if 'direct_link' in data and data['direct_link']:
@@ -202,12 +212,76 @@ Type /help for more information.
                             "dev": "@medusaXD"
                         }
                     else:
-                        logger.error(f"TeraBox API response missing direct_link: {data}")
+                        logger.error(f"Method 1 - TeraBox API response missing direct_link: {data}")
                         return None
 
         except Exception as e:
-            logger.error(f"Error getting TeraBox data: {str(e)}")
+            logger.error(f"Method 1 - Error getting TeraBox data: {str(e)}")
             return None
+
+    async def get_terabox_data_method2(self, url: str):
+        """Method 2: Get TeraBox file data using content_type=None"""
+        try:
+            params = {
+                'link': url,
+                'key': self.terabox_api_key
+            }
+
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(self.terabox_api_url, params=params) as response:
+                    if response.status != 200:
+                        logger.error(f"TeraBox API returned status {response.status}")
+                        return None
+
+                    try:
+                        # Use content_type=None to bypass mimetype checking
+                        data = await response.json(content_type=None)
+                        logger.info(f"TeraBox API parsed data: {data}")
+                    except Exception as e:
+                        logger.error(f"Method 2 - Failed to parse JSON with content_type=None: {e}")
+                        return None
+
+                    # Check if we have required fields
+                    if 'direct_link' in data and data['direct_link']:
+                        return {
+                            "status": "success",
+                            "type": "terabox",
+                            "file_name": data.get('file_name', 'terabox_file'),
+                            "direct_link": data['direct_link'],
+                            "thumb": data.get('thumb', ''),
+                            "size": data.get('size', 'Unknown'),
+                            "sizebytes": data.get('sizebytes', 0),
+                            "dev": "@medusaXD"
+                        }
+                    else:
+                        logger.error(f"Method 2 - TeraBox API response missing direct_link: {data}")
+                        return None
+
+        except Exception as e:
+            logger.error(f"Method 2 - Error getting TeraBox data: {str(e)}")
+            return None
+
+    async def get_terabox_data(self, url: str):
+        """Combined TeraBox data fetcher with fallback methods"""
+        logger.info(f"Attempting to fetch TeraBox data for URL: {url}")
+
+        # Try Method 1 first (manual JSON parsing)
+        data = await self.get_terabox_data_method1(url)
+        if data:
+            logger.info("Method 1 successful!")
+            return data
+
+        logger.info("Method 1 failed, trying Method 2...")
+
+        # Try Method 2 as fallback (content_type=None)
+        data = await self.get_terabox_data_method2(url)
+        if data:
+            logger.info("Method 2 successful!")
+            return data
+
+        logger.error("Both methods failed to fetch TeraBox data")
+        return None
 
     async def get_reel_data(self, url: str):
         """Get reel data for video content with async requests"""
@@ -441,7 +515,7 @@ Type /help for more information.
                 "<b>Possible reasons:</b>\n"
                 "• File is private or expired\n"
                 "• Invalid URL\n"
-                "• Temporary server issue\n\n"
+                "• API temporary issue\n\n"
                 "<i>Please try again later.</i>",
                 parse_mode=ParseMode.HTML
             )
