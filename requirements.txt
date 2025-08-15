@@ -1,0 +1,7 @@
+pyrogram==2.0.106
+tgcrypto==1.2.5
+aiohttp==3.9.1
+aiofiles==23.2.0
+beautifulsoup4==4.12.2
+requests==2.31.0
+lxml==4.9.3
