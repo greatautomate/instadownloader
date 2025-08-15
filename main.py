@@ -319,7 +319,7 @@ Type /help for more information.
                 data = await self.get_reel_data(url)
 
                 if data and data.get('status') == 'success':
-                    await self.process_video(data, message, processing_msg)
+                    await self.process_video(data, message, processing_msg, url)
                     return
 
                 # If video fails and it's mixed, try photo
@@ -355,8 +355,8 @@ Type /help for more information.
                 parse_mode=ParseMode.HTML
             )
 
-    async def process_video(self, data: dict, original_message: Message, processing_msg: Message):
-        """Process and send video content with HTML formatting"""
+    async def process_video(self, data: dict, original_message: Message, processing_msg: Message, original_url: str):
+        """Process and send video content with simplified caption"""
         try:
             video_url = data.get('video', '')
             if not video_url:
@@ -390,11 +390,10 @@ Type /help for more information.
                 os.remove(temp_filename)
                 return
 
-            # Send video using Pyrogram's enhanced file handling
+            # Send video with simplified caption (only original URL)
             await original_message.reply_video(
                 temp_filename,
-                caption="🎥 <b>Downloaded by Instagram Downloader Bot</b>\n\n<b>Developer:</b> @medusaXD",
-                parse_mode=ParseMode.HTML,
+                caption=f"🔗 Original URL: {original_url}",
                 progress=self.progress_callback,
                 progress_args=(processing_msg, "upload")
             )
@@ -407,7 +406,7 @@ Type /help for more information.
 
         except FloodWait as e:
             await asyncio.sleep(e.value)
-            await self.process_video(data, original_message, processing_msg)
+            await self.process_video(data, original_message, processing_msg, original_url)
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
             await processing_msg.edit_text("❌ <b>Failed to process video</b>", parse_mode=ParseMode.HTML)
